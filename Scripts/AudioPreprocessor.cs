@@ -6,6 +6,7 @@ using System;
 using System.Numerics;
 using DSPLib;
 using System.Threading;
+using System.Collections.Generic;
 
 public class AudioPreprocessor : MonoBehaviour
 {
@@ -16,6 +17,9 @@ public class AudioPreprocessor : MonoBehaviour
     private float clipLength;
     private int sampleRate;
     private SpectralFluxAnalyzer preProcessedSpectralFluxAnalyzer;
+    private List<Tuple<int, int>> rangesOfInterest;
+    //PlotController preProcessedPlotController;
+
 
     // Start is called before the first frame update
     void Start()
@@ -39,12 +43,26 @@ public class AudioPreprocessor : MonoBehaviour
     private void init()
     {
         preProcessedSpectralFluxAnalyzer = new SpectralFluxAnalyzer();
+        //preProcessedPlotController = GameObject.Find("PreprocessedPlot").GetComponent<PlotController>();
+
         aud = GetComponent<AudioSource>();
         multiChannelSamples = new float[aud.clip.samples * aud.clip.channels];
         numChannels = aud.clip.channels;
         numTotalSamples = aud.clip.samples;
         clipLength = aud.clip.length;
         sampleRate = aud.clip.frequency;
+        Debug.Log("Song name is " + aud.clip.name);
+
+        //Ranges of interest in order: Sub Bass, Bass, Low Midrange, Midrange, Upper Midrange, Presence, Brilliance
+        rangesOfInterest = new List<Tuple<int, int>>();
+        rangesOfInterest.Add(new Tuple<int, int>(20, 60));
+        rangesOfInterest.Add(new Tuple<int, int>(60, 250));
+        rangesOfInterest.Add(new Tuple<int, int>(250, 500));
+        rangesOfInterest.Add(new Tuple<int, int>(500, 2000));
+        rangesOfInterest.Add(new Tuple<int, int>(2000, 4000));
+        rangesOfInterest.Add(new Tuple<int, int>(4000, 5000));
+        rangesOfInterest.Add(new Tuple<int, int>(6000, 20000));
+
 
         aud.clip.GetData(multiChannelSamples, 0);
         Debug.Log("GetData done");
@@ -97,6 +115,7 @@ public class AudioPreprocessor : MonoBehaviour
         // Once we have our audio sample data prepared, we can execute an FFT to return the spectrum data over the time domain
         int spectrumSampleSize = 1024;
         int iterations = samples.Length / spectrumSampleSize;
+        Tuple<int, int>[] bins = calculateBins(spectrumSampleSize);
 
         FFT fft = new FFT();
         fft.Initialize((UInt32)spectrumSampleSize);
@@ -122,7 +141,7 @@ public class AudioPreprocessor : MonoBehaviour
             float curSongTime = GetTimeFromIndex(i) * spectrumSampleSize;
 
             // Send our magnitude data off to our Spectral Flux Analyzer to be analyzed for peaks
-            preProcessedSpectralFluxAnalyzer.analyzeSpectrum(Array.ConvertAll(scaledFFTSpectrum, x => (float)x), curSongTime);
+            preProcessedSpectralFluxAnalyzer.analyzeSpectrum(Array.ConvertAll(scaledFFTSpectrum, x => (float)x), curSongTime, bins);
         }
     }
 
@@ -138,5 +157,29 @@ public class AudioPreprocessor : MonoBehaviour
         return ((1f / (float)this.sampleRate) * index);
     }
 
+    //Calculates the bounds for given frequency ranges of interest
+    private Tuple<int, int>[] calculateBins(int spectrumSampleSize)
+    {
+        Tuple<int, int>[] bins = new Tuple<int, int>[rangesOfInterest.Count];
+
+        //FFT was fed in spectrumSampleSize audio samples, resulting in spectrumSampleSize/2 spectrum values
+        float numSpectrumValues = spectrumSampleSize / 2;
+
+        //Supported frequency range after FFT is sampleRate/2. Divide this by num of spectrum values from FFT for Hz/bin value
+        float binSize = sampleRate / 2 / numSpectrumValues;
+
+        int binIndex = 0;
+        foreach(Tuple<int, int> range in rangesOfInterest)
+        {
+            int lowerBound = (int)Math.Floor(range.Item1 / binSize);
+            int higherBound = (int)Math.Floor(range.Item2 / binSize);
+            bins[binIndex] = new Tuple<int, int>(lowerBound, higherBound);
+            binIndex++;
+            Debug.Log(string.Format("For bin {0} with frequencies {1} - {2}:\n"
+                + "Lower Bound Index: {3}\n"
+                + "Higher Bound Index: {4}", binIndex, range.Item1, range.Item2, lowerBound, higherBound));
+        }
+        return bins;
+    }
 
 }
