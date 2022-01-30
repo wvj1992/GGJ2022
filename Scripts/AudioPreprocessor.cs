@@ -16,8 +16,10 @@ public class AudioPreprocessor : MonoBehaviour
     private int numTotalSamples;
     private float clipLength;
     private int sampleRate;
+    private string title;
     private SpectralFluxAnalyzer preProcessedSpectralFluxAnalyzer;
     private List<Tuple<int, int>> rangesOfInterest;
+    private SongFileRW fileWriter;
     //PlotController preProcessedPlotController;
 
 
@@ -43,6 +45,7 @@ public class AudioPreprocessor : MonoBehaviour
     private void init()
     {
         preProcessedSpectralFluxAnalyzer = new SpectralFluxAnalyzer();
+        fileWriter = new SongFileRW();
         //preProcessedPlotController = GameObject.Find("PreprocessedPlot").GetComponent<PlotController>();
 
         aud = GetComponent<AudioSource>();
@@ -51,7 +54,8 @@ public class AudioPreprocessor : MonoBehaviour
         numTotalSamples = aud.clip.samples;
         clipLength = aud.clip.length;
         sampleRate = aud.clip.frequency;
-        Debug.Log("Song name is " + aud.clip.name);
+        title = aud.clip.name;
+        Debug.Log("Song name is " + title);
 
         //Ranges of interest in order: Sub Bass, Bass, Low Midrange, Midrange, Upper Midrange, Presence, Brilliance
         rangesOfInterest = new List<Tuple<int, int>>();
@@ -99,6 +103,10 @@ public class AudioPreprocessor : MonoBehaviour
 
             DoFFT(preProcessedSamples);
             Debug.Log("Spectrum Analysis done");
+
+            //TODO: Output info to file
+            fileWriter.WriteSongFile(preProcessedSpectralFluxAnalyzer, title, clipLength);
+            Debug.Log("File writing done");
             Debug.Log("Background Thread Completed");
 
         }
