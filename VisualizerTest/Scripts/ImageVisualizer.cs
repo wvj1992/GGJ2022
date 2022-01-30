@@ -6,7 +6,7 @@ using UnityEngine.UI;
 public class ImageVisualizer : MonoBehaviour
 {
     public Image myImage1, myImage2, mainImage;
-    float totalImages = 10;
+    float totalImages = 12;
     float radius = 175;
     Transform center;
 
@@ -34,7 +34,7 @@ public class ImageVisualizer : MonoBehaviour
 
             Vector3 pos = new Vector3(x, y, 0) + center.position;
 
-            switch (i / 5)
+            switch (i / 6)
             {
                 case 0:
                     Image image = Instantiate(myImage1, pos, Quaternion.Euler(0, 0, -Mathf.Rad2Deg * angle), center);
